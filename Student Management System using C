@@ -1,0 +1,227 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Define a structure to store student information
+typedef struct {
+    int id;
+    char name[50];
+    int age;
+    float gpa;
+} Student;
+
+// File to store student records
+#define FILENAME "students.dat"
+
+// Function Prototypes
+void addStudent();
+void viewStudents();
+void searchStudent();
+void deleteStudent();
+void updateStudent();
+void saveStudent(Student student);
+void displayStudent(Student student);
+int loadStudents(Student students[]);
+
+// Main menu
+int main() {
+    int choice;
+
+    while (1) {
+        printf("\n====== Student Management System ======\n");
+        printf("1. Add Student\n");
+        printf("2. View Students\n");
+        printf("3. Search Student\n");
+        printf("4. Delete Student\n");
+        printf("5. Update Student\n");
+        printf("6. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        getchar(); // Clear newline from buffer
+
+        switch (choice) {
+            case 1: addStudent(); break;
+            case 2: viewStudents(); break;
+            case 3: searchStudent(); break;
+            case 4: deleteStudent(); break;
+            case 5: updateStudent(); break;
+            case 6: printf("Exiting... Goodbye!\n"); exit(0); break;
+            default: printf("Invalid choice! Please try again.\n");
+        }
+    }
+    return 0;
+}
+
+// Add a new student to the system
+void addStudent() {
+    Student student;
+
+    printf("Enter Student ID: ");
+    scanf("%d", &student.id);
+    getchar();
+
+    printf("Enter Name: ");
+    fgets(student.name, sizeof(student.name), stdin);
+    student.name[strcspn(student.name, "\n")] = 0;
+
+    printf("Enter Age: ");
+    scanf("%d", &student.age);
+
+    printf("Enter GPA: ");
+    scanf("%f", &student.gpa);
+
+    saveStudent(student);
+    printf("Student added successfully!\n");
+}
+
+// Save student record to file
+void saveStudent(Student student) {
+    FILE *file = fopen(FILENAME, "ab");
+    if (!file) {
+        printf("Error opening file!\n");
+        return;
+    }
+    fwrite(&student, sizeof(Student), 1, file);
+    fclose(file);
+}
+
+// View all students
+void viewStudents() {
+    FILE *file = fopen(FILENAME, "rb");
+    if (!file) {
+        printf("No records found.\n");
+        return;
+    }
+
+    Student student;
+    printf("\n%-5s %-20s %-5s %-5s\n", "ID", "Name", "Age", "GPA");
+    printf("--------------------------------------------\n");
+
+    while (fread(&student, sizeof(Student), 1, file)) {
+        displayStudent(student);
+    }
+
+    fclose(file);
+}
+
+// Display a single student
+void displayStudent(Student student) {
+    printf("%-5d %-20s %-5d %-5.2f\n", student.id, student.name, student.age, student.gpa);
+}
+
+// Search for a student by ID
+void searchStudent() {
+    int searchID;
+    printf("Enter Student ID to search: ");
+    scanf("%d", &searchID);
+
+    FILE *file = fopen(FILENAME, "rb");
+    if (!file) {
+        printf("No records found.\n");
+        return;
+    }
+
+    Student student;
+    int found = 0;
+
+    while (fread(&student, sizeof(Student), 1, file)) {
+        if (student.id == searchID) {
+            printf("Student Found:\n");
+            displayStudent(student);
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Student with ID %d not found.\n", searchID);
+    }
+
+    fclose(file);
+}
+
+// Delete a student by ID
+void deleteStudent() {
+    int deleteID;
+    printf("Enter Student ID to delete: ");
+    scanf("%d", &deleteID);
+
+    FILE *file = fopen(FILENAME, "rb");
+    if (!file) {
+        printf("No records found.\n");
+        return;
+    }
+
+    FILE *tempFile = fopen("temp.dat", "wb");
+    if (!tempFile) {
+        printf("Error opening temporary file!\n");
+        fclose(file);
+        return;
+    }
+
+    Student student;
+    int found = 0;
+
+    while (fread(&student, sizeof(Student), 1, file)) {
+        if (student.id == deleteID) {
+            found = 1;
+        } else {
+            fwrite(&student, sizeof(Student), 1, tempFile);
+        }
+    }
+
+    fclose(file);
+    fclose(tempFile);
+
+    remove(FILENAME);
+    rename("temp.dat", FILENAME);
+
+    if (found) {
+        printf("Student with ID %d deleted successfully.\n", deleteID);
+    } else {
+        printf("Student with ID %d not found.\n", deleteID);
+    }
+}
+
+// Update a student's information
+void updateStudent() {
+    int updateID;
+    printf("Enter Student ID to update: ");
+    scanf("%d", &updateID);
+
+    FILE *file = fopen(FILENAME, "rb+");
+    if (!file) {
+        printf("No records found.\n");
+        return;
+    }
+
+    Student student;
+    int found = 0;
+
+    while (fread(&student, sizeof(Student), 1, file)) {
+        if (student.id == updateID) {
+            found = 1;
+            printf("Enter new Name: ");
+            getchar(); // Clear input buffer
+            fgets(student.name, sizeof(student.name), stdin);
+            student.name[strcspn(student.name, "\n")] = 0;
+
+            printf("Enter new Age: ");
+            scanf("%d", &student.age);
+
+            printf("Enter new GPA: ");
+            scanf("%f", &student.gpa);
+
+            fseek(file, -sizeof(Student), SEEK_CUR);
+            fwrite(&student, sizeof(Student), 1, file);
+            printf("Student updated successfully!\n");
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Student with ID %d not found.\n", updateID);
+    }
+
+    fclose(file);
+}
